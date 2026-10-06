@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -80,11 +81,13 @@ class DashboardControllerTest {
                 .andExpect(jsonPath("$[0].daysLate").isNumber());
     }
 
+    /** Used to return 200 [] (a misleading "quiet week"); since TODO-232 it is a 400. */
     @Test
-    void lateWithFromAfterToReturnsAnEmptyList() throws Exception {
+    void lateWithFromAfterToIsRejectedWith400() throws Exception {
         mvc.perform(get("/api/deliveries/late").param("from", "2026-09-21").param("to", "2026-09-01"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(0)));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors", hasSize(1)))
+                .andExpect(jsonPath("$.errors[0]").value("from must be on or before to"));
     }
 
     @Test
@@ -111,14 +114,14 @@ class DashboardControllerTest {
     }
 
     /**
-     * Documents the current behaviour: query parameters are not validated, so a malformed
-     * date is parsed straight into an exception and the client gets a 500. TODO-232 turns
-     * this into a 400 with an errors list. (A real HTTP call is used here because MockMvc
-     * rethrows unhandled exceptions instead of rendering the error response.)
+     * Used to document a 500 for a malformed date (TODO-232). Over real HTTP, so the full
+     * error rendering path is exercised: the client now gets a 400 with an errors list.
      */
     @Test
-    void malformedFromCurrentlyProducesA5xx() {
+    void malformedFromProducesA400WithAnErrorsBody() {
         ResponseEntity<String> response = http.getForEntity("/api/kpis?from=next-tuesday", String.class);
-        assertThat(response.getStatusCode().is5xxServerError()).isTrue();
+        assertThat(response.getStatusCode().value()).isEqualTo(400);
+        assertThat(response.getHeaders().getContentType().isCompatibleWith(MediaType.APPLICATION_JSON)).isTrue();
+        assertThat(response.getBody()).isEqualTo("{\"errors\":[\"from must be an ISO date (YYYY-MM-DD)\"]}");
     }
 }

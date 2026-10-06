@@ -13,6 +13,9 @@
   var DEFAULT_PRESET_DAYS = 30;
   var LATE_LIMIT = 20;
   var SVG_NS = 'http://www.w3.org/2000/svg';
+  var THEMES = ['light', 'dark'];
+  var DEFAULT_THEME = 'dark';
+  var THEME_STORAGE_KEY = 'ops-dashboard.theme';
 
   // ---------- API client ----------
 
@@ -102,6 +105,11 @@
     return Math.round((parseIso(iso) - parseIso(today)) / 86400000);
   }
 
+  /** A known theme name, or the default (dark) for anything else. The OS setting is ignored. */
+  function resolveTheme(value) {
+    return THEMES.indexOf(value) === -1 ? DEFAULT_THEME : value;
+  }
+
   // ---------- App ----------
 
   function initApp(document, fetchImpl) {
@@ -122,7 +130,8 @@
       chartOnTime: document.getElementById('chart-on-time'),
       chartTickets: document.getElementById('chart-tickets'),
       lateBody: document.getElementById('late-body'),
-      vendors: document.getElementById('vendors-list')
+      vendors: document.getElementById('vendors-list'),
+      themeToggle: document.getElementById('theme-toggle')
     };
 
     var state = {
@@ -136,7 +145,8 @@
       tickets: [],
       vendors: [],
       error: null,
-      vendorsError: null
+      vendorsError: null,
+      theme: DEFAULT_THEME
     };
 
     function svgEl(name, attrs, text) {
@@ -287,6 +297,51 @@
       });
     }
 
+    // ---------- Theme ----------
+
+    /** localStorage, or null where it is unavailable or blocked. */
+    function storage() {
+      try {
+        return document.defaultView ? document.defaultView.localStorage : null;
+      } catch (err) {
+        return null;
+      }
+    }
+
+    function readStoredTheme() {
+      try {
+        var store = storage();
+        return store ? store.getItem(THEME_STORAGE_KEY) : null;
+      } catch (err) {
+        return null;
+      }
+    }
+
+    function storeTheme(theme) {
+      try {
+        var store = storage();
+        if (store) {
+          store.setItem(THEME_STORAGE_KEY, theme);
+        }
+      } catch (err) {
+        // Not persisted; the theme still applies for this page view.
+      }
+    }
+
+    /** Colours live in style.css; this only flips data-theme on <html>. */
+    function applyTheme(theme) {
+      state.theme = resolveTheme(theme);
+      document.documentElement.setAttribute('data-theme', state.theme);
+      var next = state.theme === 'dark' ? 'light' : 'dark';
+      els.themeToggle.textContent = next === 'dark' ? 'Dark theme' : 'Light theme';
+      els.themeToggle.setAttribute('aria-label', 'Switch to the ' + next + ' theme');
+    }
+
+    function toggleTheme() {
+      applyTheme(state.theme === 'dark' ? 'light' : 'dark');
+      storeTheme(state.theme);
+    }
+
     // ---------- Loading ----------
 
     function load(from, to) {
@@ -345,6 +400,9 @@
       });
     });
 
+    els.themeToggle.addEventListener('click', toggleTheme);
+    applyTheme(readStoredTheme());
+
     var ready = api.health().then(function (health) {
       state.today = health.today;
       var range = applyPreset(DEFAULT_PRESET_DAYS, state.today);
@@ -359,6 +417,7 @@
       state: state,
       load: load,
       selectPreset: selectPreset,
+      toggleTheme: toggleTheme,
       api: api
     };
   }
@@ -372,7 +431,8 @@
     formatMoney: formatMoney,
     barWidths: barWidths,
     applyPreset: applyPreset,
-    daysUntil: daysUntil
+    daysUntil: daysUntil,
+    resolveTheme: resolveTheme
   };
 
   if (typeof module !== 'undefined') {

@@ -19,6 +19,7 @@ const REGISTERED_IDS = [
   'app-header',
   'app-title',
   'app-subtitle',
+  'theme-toggle',
   'range-form',
   'range-from',
   'range-to',
@@ -40,6 +41,7 @@ const REGISTERED_IDS = [
 ];
 
 const TODAY = '2026-09-21';
+const THEME_STORAGE_KEY = 'ops-dashboard.theme';
 
 /** Fixtures shaped like the real API responses (numbers from the answer key written by tools/make_seed.py). */
 const FIXTURES = {
@@ -157,12 +159,19 @@ function createFakeApi(overrides) {
 /**
  * Load the page and start the app against a fake API. `overrides` replaces any of the
  * fixtures by name (health, kpis, onTime, late, ticketsByCategory, vendors, failing).
+ * `storedTheme` puts a value in localStorage before the app starts; otherwise every
+ * load starts with an empty localStorage and no data-theme on <html>.
  * Returns { app, api, document, module } once the initial load has finished.
  */
 async function loadApp(overrides) {
   const html = readIndexHtml();
   const bodyMatch = html.match(/<body>([\s\S]*)<\/body>/);
   document.body.innerHTML = bodyMatch[1].replace(/<script[^>]*><\/script>/g, '');
+  document.documentElement.removeAttribute('data-theme');
+  window.localStorage.clear();
+  if (overrides && overrides.storedTheme !== undefined) {
+    window.localStorage.setItem(THEME_STORAGE_KEY, overrides.storedTheme);
+  }
 
   const api = createFakeApi(overrides);
   global.fetch = api.fetchImpl;
