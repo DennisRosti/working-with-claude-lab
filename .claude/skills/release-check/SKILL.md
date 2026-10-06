@@ -5,7 +5,7 @@ description: Run before opening a PR. Verifies both test suites against the base
 
 # Release check
 
-Invoke it by name with `/release-check`. Baseline set after TODO-231 (45 Jest tests plus 13
+Invoke it by name with `/release-check`. Baselines: Java 63 after TODO-232, Jest 58 after TODO-231 (45 plus 13
 in `theme.test.js`).
 
 ## Preconditions
@@ -26,7 +26,7 @@ in `theme.test.js`).
 
 ## Constraints
 
-- Baseline: **Java 25**, **Jest 58**.
+- Baseline: **Java 63**, **Jest 58**.
 - A count BELOW the baseline is a **FAIL**, even if every test that ran passed.
   Fewer tests means something was deleted or skipped; find out what before
   reporting.
@@ -40,7 +40,7 @@ in `theme.test.js`).
 
 ```
 Release check
-  Java:  <n> run, <f> failures, <e> errors   (baseline 25)  PASS|FAIL
+  Java:  <n> run, <f> failures, <e> errors   (baseline 63)  PASS|FAIL
   Jest:  <n> passed, <t> total               (baseline 58)  PASS|FAIL
   Verdict: READY | NOT READY
   Notes: <one line per problem, or "none">
